@@ -30,9 +30,28 @@
 </style>
 </head>
 <body>
-  <video id="v" autoplay muted playsinline></video>
-  <script>
+    <video id="v"
+    autoplay
+    muted
+    playsinline
+    preload="auto"
+    controlslist="nodownload noplaybackrate noremoteplayback"
+    disablepictureinpicture
+    disableRemotePlayback
+    style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000;cursor:none">
+    </video>  
+    <script>
     const v = document.getElementById("v");
+    try {
+    v.controls = false;
+    v.disableRemotePlayback = true;
+    if (v.controlsList && v.controlsList.add) {
+        v.controlsList.add('noremoteplayback');
+        v.controlsList.add('nodownload');
+        v.controlsList.add('noplaybackrate');
+    }
+    } catch (e) {}
+
     let playlist = [];
     let i = 0;
 
