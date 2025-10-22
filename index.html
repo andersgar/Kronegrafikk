@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Krone video</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
+</style>
+</head>
+<body>
+  <video id="v" autoplay muted playsinline></video>
+  <script>
+    const v = document.getElementById("v");
+    let playlist = [];
+    let i = 0;
+
+    fetch("videos.json", {cache:"no-store"})
+      .then(r => r.json())
+      .then(list => {
+        playlist = list.filter(x => typeof x === "string" && x.endsWith(".mp4"));
+        if (playlist.length === 0) throw new Error("No .mp4 files listed in videos.json");
+        play(0);
+      })
+      .catch(err => {
+        console.error(err);
+        // Fallback to a single file name if you don’t use videos.json:
+        // v.src = "video.mp4"; v.loop = true; v.play();
+      });
+
+    function play(index){
+      i = index % playlist.length;
+      v.src = playlist[i];
+      v.load();
+      v.play().catch(()=>{});
+    }
+    v.addEventListener("ended", ()=> play(i + 1));
+
+    // Best-effort to keep the display awake
+    if (navigator.wakeLock && navigator.wakeLock.request) {
+      navigator.wakeLock.request("screen").catch(()=>{});
+    }
+  </script>
+</body>
+</html>
