@@ -3,87 +3,44 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Video krone</title>
+<title>Krone video</title>
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:none}
-  video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+  video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
 </style>
 </head>
 <body>
-  <video id="v" autoplay muted playsinline preload="auto" crossorigin="anonymous"></video>
+  <video id="v" autoplay muted playsinline></video>
   <script>
-    const playlist = [
-      "Kronegrafikk-1.mp4",
-      "Kronegrafikk-2.mp4",
-      "Kronegrafikk-3.mp4"
-    ];
-
     const v = document.getElementById("v");
+    let playlist = [];
     let i = 0;
-    let retries = 0;
-    let loadTimer = null;
 
-    function log(...args){ try{ console.log(...args); }catch(_){} }
-
-    function next() {
-      clearTimeout(loadTimer);
-      retries = 0;
-      i = (i + 1) % playlist.length;
-      play(i);
-    }
-
-    function play(index) {
-      clearTimeout(loadTimer);
-      const src = playlist[index];
-      log("Loading", src);
-      v.pause();
-      v.removeAttribute("src");
-      v.load(); // reset state
-      v.src = src;          // if cross-domain, ensure CORS headers server-side
-      v.currentTime = 0;
-      v.play().catch(()=>{ /* will often resolve once ready */ });
-
-      // If nothing loads within 8s, skip
-      loadTimer = setTimeout(() => {
-        log("Timeout waiting for video to load:", src);
-        handleError();
-      }, 8000);
-    }
-
-    function handleError() {
-      clearTimeout(loadTimer);
-      if (retries < 1) {
-        retries++;
-        log("Retrying", playlist[i], "retry", retries);
-        play(i);
-      } else {
-        log("Skipping broken video:", playlist[i]);
-        next();
-      }
-    }
-
-    // Advance on natural end
-    v.addEventListener("ended", next);
-
-    // Robust error handling
-    ["error","stalled","abort","emptied","suspend","waiting"].forEach(ev =>
-      v.addEventListener(ev, () => {
-        log("Video event:", ev, "readyState", v.readyState, "networkState", v.networkState);
-        // If we already started playing and hit 'waiting', let it buffer.
-        // If we haven't loaded enough (readyState < 2), treat as error.
-        if (v.readyState < 2) handleError();
+    fetch("videos.json", {cache:"no-store"})
+      .then(r => r.json())
+      .then(list => {
+        playlist = list.filter(x => typeof x === "string" && x.endsWith(".mp4"));
+        if (playlist.length === 0) throw new Error("No .mp4 files listed in videos.json");
+        play(0);
       })
-    );
+      .catch(err => {
+        console.error(err);
+        // Fallback to a single file name if you don’t use videos.json:
+        // v.src = "video.mp4"; v.loop = true; v.play();
+      });
 
-    // When it's actually ready, clear the timeout
-    v.addEventListener("loadeddata", () => {
-      clearTimeout(loadTimer);
-      retries = 0;
+    function play(index){
+      i = index % playlist.length;
+      v.src = playlist[i];
+      v.load();
       v.play().catch(()=>{});
-    });
+    }
+    v.addEventListener("ended", ()=> play(i + 1));
 
-    // Kick off
-    play(i);
+    // Best-effort to keep the display awake
+    if (navigator.wakeLock && navigator.wakeLock.request) {
+      navigator.wakeLock.request("screen").catch(()=>{});
+    }
   </script>
 </body>
 </html>
